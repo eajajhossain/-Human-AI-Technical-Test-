@@ -1,0 +1,13 @@
+Best Model: SVM (RBF)
+
+                    precision    recall  f1-score   support
+
+  calm_description     0.9231    1.0000    0.9600        12
+character_dialogue     0.7778    0.8750    0.8235         8
+ dramatic_emphasis     0.8571    0.8571    0.8571         7
+          suspense     0.7143    0.7143    0.7143         7
+           urgency     1.0000    0.6667    0.8000         6
+
+          accuracy                         0.8500        40
+         macro avg     0.8545    0.8226    0.8310        40
+      weighted avg     0.8575    0.8500    0.8477        40
