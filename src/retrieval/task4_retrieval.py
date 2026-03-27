@@ -47,9 +47,9 @@ class Recording:
 
 # Energy thresholds (tuned for RAVDESS RMS values ~0.01 – 0.15)
 ENERGY_THRESHOLDS = {
-    "low":    (0.000, 0.030),
-    "medium": (0.030, 0.070),
-    "high":   (0.070, 1.000),
+    "low":    (0.000, 0.040),
+    "medium": (0.030, 0.080),
+    "high":   (0.050, 1.000),
 }
 
 TONE_ALIASES = {
@@ -151,6 +151,7 @@ class NarrativeRetrievalSystem:
         self.recordings: list[Recording] = []
 
     #  Index building 
+    
     def build_index_from_csv(self, features_csv: str,
                               transcripts_csv: Optional[str] = None,
                               predicted_tones_csv: Optional[str] = None) -> None:
@@ -178,6 +179,13 @@ class NarrativeRetrievalSystem:
             df.loc[mask, "narrative_tone"] = df.loc[mask, "emotion_label"].map(NARRATIVE_MAP)
 
         for _, row in df.iterrows():
+            filename = str(row.get("filename", ""))
+            fname = filename.split("\\")[-1].split("/")[-1]
+
+            # RAVDESS speech files start with "03-01"
+            if not filename.startswith("03-01"):
+                continue
+    
             rec = Recording(
                 filepath               = str(row.get("filepath", "")),
                 filename               = str(row.get("filename", "")),
@@ -216,12 +224,46 @@ class NarrativeRetrievalSystem:
         print(f"[Filters] {json.dumps(filters, indent=2)}")
 
         candidates = self._apply_filters(self.recordings, filters)
-        ranked     = self._rank(candidates, filters)
-        results    = ranked[:top_k]
+
+        #fallback logic
+        if len(candidates)== 0:
+            print("[Fallback Level 1] relaxing energy constraint...")
+
+            relaxed_filters = filters.copy()
+            if "energy_range" in relaxed_filters:
+                lo,hi = relaxed_filters["energy_range"]
+                relaxed_filters["energy_range"] = (lo * 0.5, hi)
+
+            candidates = self._apply_filters(self.recordings,relaxed_filters)
+
+        if len(candidates) == 0:
+                print("[Fallback Level 2] removing duration constraints...")
+                relaxed_filters = filters.copy()
+                relaxed_filters.pop("min_duration", None)
+                if "max_duration" in relaxed_filters:
+                    relaxed_filters["max_duration"] = min(
+                        relaxed_filters["max_duration"] + 1.0,
+                        4.0
+                    )
+                candidates = self._apply_filters(self.recordings, relaxed_filters)
+
+        if len(candidates) == 0:
+                print("[Fallback Level 3] removing tone constraint...")
+                relaxed_filters = filters.copy()
+                relaxed_filters.pop("narrative_tone", None)
+                candidates = self._apply_filters(self.recordings, relaxed_filters)
+        if len(candidates) == 0:
+            print("[Fallback Level 4] returning top energy samples...")
+            # last fallback ,no filters
+            candidates = self.recordings
+                
+
+        ranked = self._rank(candidates,filters)
+        results = ranked[:top_k]
 
         print(f"[Results] {len(results)} / {len(self.recordings)} recordings matched\n")
         return results
-
+            
     #  Filter application
     @staticmethod
     def _apply_filters(recordings: list[Recording], filters: dict) -> list[Recording]:
@@ -275,8 +317,17 @@ class NarrativeRetrievalSystem:
         scored = []
         for rec in recordings:
             score = 0.0
-            # Higher energy -> more engaging/dramatic ->ranked higher by default
+            # Tone match
+            if "narrative_tone" in filters and rec.narrative_tone == filters["narrative_tone"]:
+                score += 5.0
+            # strong weight on Energy 
             score += rec.rms_energy_mean * 10.0
+            #pitch contribution
+            score += (rec.pitch_mean_hz / 300.0) * 2.0
+            # Duration closeness (if constraint exists)
+            if "min_duration" in filters:
+                score += max(0, 1 - abs(rec.duration_sec - filters["min_duration"]) / 5)
+
             # Prefer recordings with transcripts
             if rec.transcript:
                 score += 0.5

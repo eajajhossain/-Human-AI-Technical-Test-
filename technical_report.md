@@ -1,40 +1,42 @@
 # TableTalk Human-AI Technical Test
 
-### Narrative Voice Processing and Classification
+#Machine Learning for Narrative Voice Classification and Retrieval in Interactive Storytelling Systems
 
 **Dataset:** RAVDESS Emotional Speech Dataset
-**Author:** [KAZI EAJAJ HOSSAIN]
+**Author:** KAZI EAJAJ HOSSAIN
 
+---
 
+# 1. Overview
 
-## 1. Overview
+This project presents an end-to-end machine learning system for **processing, classifying, transcribing, and retrieving narrative voice recordings** for interactive storytelling applications.
 
-This report presents an end-to-end machine learning pipeline for processing, classifying, transcribing, and retrieving narrative voice recordings for tabletop storytelling applications.
+Unlike a standard ML pipeline, this system introduces an **adaptive retrieval engine** that:
 
-The system consists of four core components:
+* Parses natural-language queries
+* Converts them into structured constraints
+* Applies filtering and ranking
+* Uses **multi-stage fallback to ensure meaningful results**
 
-1. Audio feature extraction
-2. Narrative tone classification
-3. Speech-to-text transcription
-4. Content-based audio retrieval
+---
 
-Additionally, a statistical analysis is performed to distinguish storytelling narration from conversational speech.
-
-All experiments are conducted on the RAVDESS dataset, which provides controlled emotional speech recordings suitable for modeling narrative tone.
-
-
-
-## 2. Dataset
+# 2. Dataset
 
 **RAVDESS (Ryerson Audio-Visual Database of Emotional Speech and Song)**
 
 * 24 professional actors
 * 8 emotions: neutral, calm, happy, sad, angry, fearful, disgust, surprised
-* ~1,440 speech recordings
-* Duration: ~3–5 seconds
+* Speech duration: ~3–5 seconds
 * Sample rate: 22,050 Hz
 
-### Emotion → Narrative Tone Mapping
+### Subset Used
+
+* **Speech-only subset (Audio_Speech_Actors_01-24)**
+* **200 samples used in experiments** 
+
+---
+
+## Emotion → Narrative Tone Mapping
 
 | Emotion        | Narrative Tone     |
 | -------------- | ------------------ |
@@ -44,92 +46,91 @@ All experiments are conducted on the RAVDESS dataset, which provides controlled 
 | angry, disgust | urgency            |
 | fearful        | suspense           |
 
-This mapping enables supervised learning for narrative tone classification.
+---
 
-
-
-## 3. Task 1 — Audio Processing Pipeline
+# 3. Task 1 — Audio Processing Pipeline
 
 Each audio file is:
 
 * Loaded at 22,050 Hz
-* Peak normalized
-* Segmented into non-silent regions
+* Normalized
+* Processed into structured features
 
-### Extracted Features
+### Extracted Features (~70 per sample)
 
-* **MFCC (13 + delta + delta²)** → spectral representation
-* **Pitch (YIN)** → mean, std, range
-* **RMS Energy** → loudness dynamics
-* **Spectral features** → centroid, bandwidth, rolloff
-* **Zero Crossing Rate** → noisiness
-* **Pacing features** → silence ratio, tempo
-* **Chroma features** → tonal distribution
+* MFCC (13 + delta features)
+* Pitch (mean, std, range)
+* RMS Energy (mean, std, max)
+* Spectral features (centroid, bandwidth, rolloff)
+* Zero Crossing Rate
+* Silence / speech ratio
+* Tempo
 
-The final dataset contains ~70–80 features per sample and is stored as a structured CSV.
+### Output
 
+* **200 samples × 70 features dataset** 
 
+---
 
-## 4. Task 2 — Narrative Tone Classification
+# 4. Task 2 — Narrative Tone Classification
 
-### Models Evaluated
+### Experimental Setup
 
-Using an 80/20 stratified split:
-
-| Model               | Test Accuracy | Test F1   |
-| ------------------- | ------------- | --------- |
-| Logistic Regression | 0.775         | 0.761     |
-| Random Forest       | 0.825         | 0.807     |
-| Gradient Boosting   | 0.825         | 0.810     |
-| **SVM (RBF)**       | **0.850**     | **0.831** |
-
-### Key Result
-
-👉 **Best Model: SVM (RBF), F1 ≈ 0.83**
-
-### Insights
-
-* `calm_description` is the easiest class (high precision & recall)
-* `urgency` and `suspense` show overlap due to similar energy patterns
-* **RMS energy and MFCC features are the most discriminative**
-
-### Discussion
-
-The classification task is non-trivial due to overlapping acoustic characteristics between emotional states. Despite this, the model achieves strong performance using classical ML methods.
-
-
-
-## 5. Task 3 — AI-Based Transcription
-
-### Approach
-
-OpenAI Whisper (`base`) is used for speech-to-text transcription.
+* 80/20 train-test split
+* 5 narrative tone classes
 
 ### Results
 
-| Metric                  | Score  |
-| ----------------------- | ------ |
-| Exact Match Accuracy    | ~99%   |
-| Word Accuracy (1 − WER) | ~99.8% |
-| WER                     | ~0.17% |
-| CER                     | ~0.09% |
+| Model               | Test Accuracy | Test F1    |
+| ------------------- | ------------- | ---------- |
+| Logistic Regression | 0.8000        | 0.7874     |
+| Random Forest       | **0.8750**    | **0.8838** |
+| Gradient Boosting   | 0.8500        | 0.8494     |
+| SVM (RBF)           | 0.8500        | 0.8371     |
 
-### Important Note
+👉 **Best Model: Random Forest (F1 = 0.8838)** 
 
-The high accuracy is primarily due to the **fixed sentence structure in RAVDESS**:
+---
+
+## Key Insights
+
+* `urgency` and `suspense` are highly separable
+* `dramatic_emphasis` shows moderate confusion
+* **RMS energy is the strongest discriminative feature**
+
+---
+
+# 5. Task 3 — AI-Based Transcription
+
+### Approach
+
+* OpenAI Whisper (`base`) used for speech-to-text
+
+### Results (200 samples)
+
+| Metric                | Score  |
+| --------------------- | ------ |
+| Exact Match Accuracy  | 97.50% |
+| Word Accuracy (1-WER) | 99.50% |
+| Word Error Rate (WER) | 0.50%  |
+| Char Error Rate (CER) | 0.41%  |
+
+
+
+### Observation
+
+High accuracy is due to **fixed sentence structure** in RAVDESS:
 
 * “Kids are talking by the door”
 * “Dogs are sitting by the door”
 
-👉 This simplifies the ASR task and inflates performance compared to real-world data.
+---
 
+# 6. Task 4 — Adaptive Retrieval System
 
+## System Design
 
-## 6. Task 4 — Narrative Audio Retrieval System
-
-### Design
-
-A rule-based retrieval system converts natural-language queries into structured filters:
+The retrieval system converts natural-language queries into structured filters:
 
 | Feature  | Example                 |
 | -------- | ----------------------- |
@@ -139,81 +140,126 @@ A rule-based retrieval system converts natural-language queries into structured 
 | Pitch    | "high pitch"            |
 | Pacing   | "slow paced"            |
 
-### Example Results
+---
 
-* "calm narration longer than 4 seconds" → valid matches returned
-* "urgency with high pitch" → filtered correctly
-* "high-energy speech" → initially returned 0 results (threshold tuning required)
+## Retrieval Pipeline
 
-### Insight
+1. Query parsing
+2. Constraint extraction
+3. Filtering
+4. Ranking
+5. **Fallback (adaptive relaxation)**
 
-The system demonstrates effective multi-constraint filtering but is sensitive to threshold selection (e.g., energy range).
+---
 
+## Multi-Stage Fallback Strategy
 
+When strict constraints fail:
 
-## 7. Bonus — Storytelling Analysis
+1. Relax energy constraints
+2. Relax duration constraints
+3. Relax tone constraints
+
+👉 Ensures:
+
+* No empty results
+* Closest possible matches
+* Robust user experience
+
+---
+
+## Example Outputs
+
+### Query: "calm narration longer than 4 seconds"
+
+* Returns recordings with duration ~4.0–4.14 seconds
+* Correct tone: `calm_description`
+
+---
+
+### Query: "high-energy speech"
+
+* Returns `urgency` samples
+* RMS energy ~0.05–0.09
+
+---
+
+### Query: "suspense shorter than 3 seconds"
+
+* No strict matches
+* Fallback triggered
+* Returns closest results (~3.6–3.8 seconds)
+
+👉 Demonstrates **adaptive constraint handling**
+
+---
+
+# 7. Bonus — Storytelling Analysis
 
 ### Method
 
 * Split into storytelling vs conversational speech
-* Applied Welch’s t-test and Cohen’s d
+* Welch’s t-test + Cohen’s d
 
 ### Key Findings
 
-| Feature          | Effect            |
-| ---------------- | ----------------- |
-| RMS Energy Mean  | Strong (d ≈ 0.94) |
-| RMS Energy Std   | Strong (d ≈ 0.97) |
-| Tempo            | Moderate          |
-| Pitch / Duration | Weak              |
-
-### Interpretation
-
-* **Energy is the strongest discriminator of storytelling speech**
-* Pitch variation is less significant than expected
-* Storytelling relies more on intensity than pitch
-
-
-## 8. System Pipeline Summary
-
-
-Audio → Feature Extraction → Classification → Transcription → Retrieval
-
-
-This modular pipeline enables:
-
-* scalable processing
-* flexible querying
-* integration into real-time systems
+| Feature         | Effect Size (d) |
+| --------------- | --------------- |
+| Duration        | ~0.87           |
+| RMS Energy Std  | ~0.82           |
+| RMS Energy Mean | ~0.81           |
 
 
 
-## 9. Limitations
+---
+
+## Interpretation
+
+* Storytelling speech has **higher energy variability**
+* Energy is more important than pitch
+* Duration also plays a significant role
+
+---
+
+# 8. System Pipeline Summary
+
+Audio
+→ Feature Extraction
+→ Classification
+→ Transcription
+→ **Adaptive Retrieval**
+
+---
+
+# 9. Limitations
 
 * Fixed sentence dataset limits generalization
-* Small dataset (~200 samples used)
-* Heuristic emotion-to-tone mapping
+* Small dataset (200 samples)
+* Heuristic mapping (emotion → tone)
 * No deep learning embeddings
 
+---
 
+# 10. Future Work
 
-## 10. Future Work
+* Use pretrained embeddings (wav2vec2, HuBERT)
+* Add semantic retrieval (FAISS)
+* Train on real-world storytelling datasets
+* Deploy API (FastAPI)
 
-* Pretrained audio embeddings (wav2vec2, HuBERT)
-* Semantic retrieval (FAISS + embeddings)
-* Real storytelling dataset fine-tuning
-* API deployment (FastAPI)
+---
 
+# 11. Conclusion
 
+This project demonstrates:
 
-## 11. Conclusion
+* Strong classification performance (**F1 = 0.8838**)
+* High transcription accuracy (dataset-dependent)
+* A **robust adaptive retrieval system**
 
-This project demonstrates a complete ML pipeline for narrative audio understanding, achieving:
+The key contribution is not just modeling, but **system design for real-world usability**, particularly:
 
-* Strong classification performance (F1 ≈ 0.83)
-* Near-perfect transcription (dataset-dependent)
-* Functional natural-language retrieval system
+👉 handling imperfect queries through adaptive constraint relaxation
+👉 ensuring meaningful results under strict conditions
 
-The system highlights the importance of **feature engineering and system design** in practical ML applications.
-
-
+---

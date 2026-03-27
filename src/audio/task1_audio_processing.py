@@ -176,7 +176,10 @@ def process_dataset(data_dir: str, output_csv: str = "features_dataset.csv",
         pd.DataFrame with one row per recording
     """
     data_dir = Path(data_dir)
-    wav_files = sorted(data_dir.rglob("*.wav"))
+    wav_files = [
+        f for f in Path(data_dir).rglob("*.wav")
+        if "Audio_Speech" in str(f)
+    ]
     if max_files:
         wav_files = wav_files[:max_files]
 
