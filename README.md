@@ -1,4 +1,4 @@
-#🚀 Adaptive Narrative Audio Retrieval System
+# 🚀 Adaptive Narrative Audio Retrieval System
 
 
 # 🚀 What This Project Actually Does
