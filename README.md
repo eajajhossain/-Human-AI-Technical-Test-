@@ -1,7 +1,4 @@
-Adaptive Narrative Audio Retrieval System
-
-Machine Learning system for **classification, transcription, and intelligent retrieval of narrative voice recordings** for interactive storytelling applications.
-.
+🚀 Adaptive Narrative Audio Retrieval System
 
 
 # 🚀 What This Project Actually Does
