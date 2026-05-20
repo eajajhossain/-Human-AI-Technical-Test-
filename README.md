@@ -1,16 +1,10 @@
-# # TableTalk Human-AI Technical Test
+Adaptive Narrative Audio Retrieval System
 
 Machine Learning system for **classification, transcription, and intelligent retrieval of narrative voice recordings** for interactive storytelling applications.
+.
 
-Built for the TableTalk GSoC 2026 Technical Test using the **RAVDESS Emotional Speech Dataset**.
-
----
 
 # 🚀 What This Project Actually Does
-
-This is **not just a machine learning pipeline**.
-
-👉 It is an **adaptive retrieval system** that:
 
 * Understands natural-language queries
 * Converts them into structured constraints
